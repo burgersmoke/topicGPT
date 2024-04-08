@@ -103,8 +103,11 @@ def api_call(prompt, deployment_name, temperature, max_tokens, top_p):
 
             encodeds = LOCAL_TOKENIZER.apply_chat_template(messages, return_tensors="pt")
 
-            model_inputs = encodeds.to(device)
-            LOCAL_MODEL.to(device)
+            model_inputs = encodeds
+
+            # TODO: Do I need to do this if this is only running in CPU?
+            #model_inputs = encodeds.to(device)
+            #LOCAL_MODEL.to(device)
 
             generated_ids = LOCAL_MODEL.generate(model_inputs, max_new_tokens=max_tokens, do_sample=True)
             decoded = LOCAL_TOKENIZER.batch_decode(generated_ids)
