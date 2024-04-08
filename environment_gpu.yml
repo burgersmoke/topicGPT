@@ -1,0 +1,25 @@
+name: topic_gpt_gpu
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.11
+  - sentence-transformers
+  - anytree
+  - openai
+  - nb_conda_kernels
+  - numpy
+  - pandas
+  - regex
+  - jupyter
+  - tqdm
+  - requests
+  - pytz
+  - tenacity
+  - tiktoken
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.8
+  - cuda-toolkit
