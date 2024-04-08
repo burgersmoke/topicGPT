@@ -19,6 +19,9 @@ from sklearn import metrics
 # Add perplexity API key to the environment variable & load it here.
 PERPLEXITY_API_KEY = ""
 
+# these remain empty unless we attempt to load a local model
+LOCAL_MODEL = None
+LOCAL_TOKENIZER = None
 
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
 def api_call(prompt, deployment_name, temperature, max_tokens, top_p):
@@ -72,6 +75,43 @@ def api_call(prompt, deployment_name, temperature, max_tokens, top_p):
             print(response.text)
             raise Exception("Error in perplexity API call")
         return response.json()["choices"][0]["message"]["content"]
+    elif os.path.exists(os.path.dirname(deployment_name)):
+        global LOCAL_MODEL
+        global LOCAL_TOKENIZER
+
+        if LOCAL_MODEL is None:
+            print('Attempting to import HuggingFace transformers libraries to do local model loading...')
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            print(f'Attempting to load a local model given this path: {deployment_name}')
+
+            LOCAL_MODEL = AutoModelForCausalLM.from_pretrained(deployment_name)
+            LOCAL_TOKENIZER = AutoTokenizer.from_pretrained(deployment_name)
+
+            print(f'type(local_model): {type(LOCAL_MODEL)}')
+            print(f'type(local_tokenizer): {type(LOCAL_TOKENIZER)}')
+
+        if LOCAL_MODEL is None:
+            print(f'Apparently this model was not able to be loaded: {deployment_name}')
+        else:
+            print('Attempting to use locally loaded model...')
+
+            messages = [
+                {"role": "user", "content": prompt},
+            ]
+
+            device = 'cpu'
+
+            encodeds = LOCAL_TOKENIZER.apply_chat_template(messages, return_tensors="pt")
+
+            model_inputs = encodeds.to(device)
+            LOCAL_MODEL.to(device)
+
+            generated_ids = LOCAL_MODEL.generate(model_inputs, max_new_tokens=max_tokens, do_sample=True)
+            decoded = LOCAL_TOKENIZER.batch_decode(generated_ids)
+            print(decoded[0])
+
+
+
     else:
         print("Invalid deployment name. Please try again.")
 
