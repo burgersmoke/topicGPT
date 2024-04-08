@@ -1,20 +1,18 @@
-name: topicgpt
+name: topic_gpt
 channels:
   - conda-forge
 dependencies:
   - python=3.11
   - sentence-transformers
+  - anytree
+  - openai
   - nb_conda_kernels
   - numpy
   - pandas
+  - regex
   - jupyter
   - tqdm
   - requests
-  - pip
-  - pip:
-    - anytree==2.12.1
-    - openai==1.3.3
-    - pytz==2023.3
-    - regex==2023.8.8
-    - tenacity==8.2.3
-    - tiktoken==0.5.1
+  - pytz
+  - tenacity
+  - tiktoken
