@@ -13,7 +13,11 @@ import requests
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from openai import OpenAI
 
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+open_ai_key = ""
+if "OPENAI_API_KEY" in os.environ.keys():
+    open_ai_key = os.environ["OPENAI_API_KEY"]
+
+client = OpenAI(api_key=open_ai_key)
 from sklearn import metrics
 
 # Add perplexity API key to the environment variable & load it here.
@@ -23,7 +27,7 @@ PERPLEXITY_API_KEY = ""
 LOCAL_MODEL = None
 LOCAL_TOKENIZER = None
 
-@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
+@retry(wait=wait_random_exponential(min=10, max=20), stop=stop_after_attempt(6))
 def api_call(prompt, deployment_name, temperature, max_tokens, top_p):
     """
     Call API (OpenAI, Azure, Perplexity) and return response
@@ -76,16 +80,26 @@ def api_call(prompt, deployment_name, temperature, max_tokens, top_p):
             raise Exception("Error in perplexity API call")
         return response.json()["choices"][0]["message"]["content"]
     elif os.path.exists(os.path.dirname(deployment_name)):
+
+        print('Attempting to import HuggingFace transformers libraries to do local model loading...')
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        import torch
+
+        # NOTE: Not a great practice, but better than loading a model
+        # each time through here...
         global LOCAL_MODEL
         global LOCAL_TOKENIZER
 
         if LOCAL_MODEL is None:
-            print('Attempting to import HuggingFace transformers libraries to do local model loading...')
-            from transformers import AutoModelForCausalLM, AutoTokenizer
             print(f'Attempting to load a local model given this path: {deployment_name}')
 
             LOCAL_MODEL = AutoModelForCausalLM.from_pretrained(deployment_name)
             LOCAL_TOKENIZER = AutoTokenizer.from_pretrained(deployment_name)
+
+            model_device = 'cpu'
+            if torch.cuda.is_available():
+                model_device = 'cuda'
+                LOCAL_MODEL.to(model_device)
 
             print(f'type(local_model): {type(LOCAL_MODEL)}')
             print(f'type(local_tokenizer): {type(LOCAL_TOKENIZER)}')
@@ -95,23 +109,37 @@ def api_call(prompt, deployment_name, temperature, max_tokens, top_p):
         else:
             print('Attempting to use locally loaded model...')
 
+            # This is how messages above are set up in the API call
             messages = [
                 {"role": "user", "content": prompt},
             ]
-
-            device = 'cpu'
 
             encodeds = LOCAL_TOKENIZER.apply_chat_template(messages, return_tensors="pt")
 
             model_inputs = encodeds
 
-            # TODO: Do I need to do this if this is only running in CPU?
-            #model_inputs = encodeds.to(device)
-            #LOCAL_MODEL.to(device)
+            device = 'cpu'
+            if torch.cuda.is_available():
+                device = 'cuda'
+                model_inputs = encodeds.to(device)
 
             generated_ids = LOCAL_MODEL.generate(model_inputs, max_new_tokens=max_tokens, do_sample=True)
             decoded = LOCAL_TOKENIZER.batch_decode(generated_ids)
-            print(decoded[0])
+
+            decoded_response = decoded[0]
+
+            CLOSING_INST_TEXT = '[/INST]'
+            last_instruction_idx = decoded_response.rfind(CLOSING_INST_TEXT)
+            if last_instruction_idx > 0:
+                decoded_response = decoded_response[last_instruction_idx + len(CLOSING_INST_TEXT):]
+                decoded_response = decoded_response.strip()
+
+            # and the incoming instruction will be like this:
+            # [INST] STUFFFF [/INST]
+            # RESPONSE
+            # So there is likely a better way to get at this, but here's one way to get it:
+
+            return decoded_response
 
 
 
