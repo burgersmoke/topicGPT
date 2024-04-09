@@ -19,6 +19,8 @@ def prompt_formatting(
     context_len,
     verbose,
     max_top_len=100,
+    #sentence_transformer_model = "all-MiniLM-L6-v2"
+    sentence_transformer_model = "F:/git/kelly/all-MiniLM-L6-v2"
 ):
     """
     Format prompt to include document and seed topics
@@ -32,7 +34,7 @@ def prompt_formatting(
     - verbose: Whether to print out results
     - max_top_len: Max length of topics to include in prompt (Modify if necessary)
     """
-    sbert = SentenceTransformer("all-MiniLM-L6-v2")
+    sbert = SentenceTransformer(sentence_transformer_model)
     # Format seed topics to include manually written topics + previously generated topics
     topic_str = open(seed_file, "r").read() + "\n" + "\n".join(topics_list)
 
