@@ -13,6 +13,8 @@ import requests
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from openai import OpenAI
 
+from sqlalchemy import create_engine
+
 open_ai_key = ""
 if "OPENAI_API_KEY" in os.environ.keys():
     open_ai_key = os.environ["OPENAI_API_KEY"]
@@ -543,4 +545,18 @@ def get_source_docs_from_json_db_config(json_config_file_name):
     db_name = config_series.DB_NAME
     db_query = config_series.DB_QUERY
 
-    return docs
+    conn_template_str = 'mssql+pyodbc://{0}/{1}?trusted_connection=yes&driver=SQL+Server'
+
+    # In[11]:
+
+    print('Setting up  document connection')
+    document_engine = create_engine(conn_template_str.format(db_host, db_name))
+
+    df = pd.read_sql(db_query, document_engine)
+
+    print(f'Total rows read from DB: {len(df)}')
+
+    # and now we no longer need that SQL Alchemy engine
+    document_engine.dispose()
+
+    return df

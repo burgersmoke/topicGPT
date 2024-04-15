@@ -242,7 +242,9 @@ def main():
         print('Prepping to read input data from relational database given a JSON config file...')
         print('This config file will contain the information of where to get the source data')
 
-        docs = get_source_docs_from_json_db_config(str(args.data))
+        df = get_source_docs_from_json_db_config(str(args.data))
+
+        docs = df["Text"].tolist()
 
     generation_prompt = open(args.prompt_file, "r").read()
     topics_root, topics_list = generate_tree(read_seed(args.seed_file))
@@ -272,7 +274,7 @@ def main():
         df.to_json(args.out_file, lines=True, orient="records")
     except Exception as e:
         traceback.print_exc()
-        with open(f"data/output/generation_1_backup_{deployment_name}.txt", "w") as f:
+        with open(f"data/output/generation_1_backup.txt", "w") as f:
             for line in responses:
                 print(line, file=f)
 
