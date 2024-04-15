@@ -233,8 +233,17 @@ def main():
     context_len = context - max_tokens
 
     # Load data ----
-    df = pd.read_json(str(args.data), lines=True)
-    docs = df["text"].tolist()
+    # let's see if this will be JSONL or some other kind of data
+    if 'jsonl' in args.data.lower():
+        print('Reading raw input data as JSONL...')
+        df = pd.read_json(str(args.data), lines=True)
+        docs = df["text"].tolist()
+    elif 'json' in args.data.lower():
+        print('Prepping to read input data from relational database given a JSON config file...')
+        print('This config file will contain the information of where to get the source data')
+
+        docs = get_source_docs_from_json_db_config(str(args.data))
+
     generation_prompt = open(args.prompt_file, "r").read()
     topics_root, topics_list = generate_tree(read_seed(args.seed_file))
 

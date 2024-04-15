@@ -528,3 +528,19 @@ def calculate_metrics(true_col, pred_col, df):
     ari = metrics.adjusted_rand_score(df[true_col], df[pred_col])
     mis = metrics.normalized_mutual_info_score(df[true_col], df[pred_col])
     return (harmonic_purity, ari, mis)
+
+def get_source_docs_from_json_db_config(json_config_file_name):
+    docs = []
+
+    # there should be only one row in this dataframe
+    # (one database connection only)
+
+    print(f'Reading database config file from: {json_config_file_name}')
+
+    config_series = pd.read_json(json_config_file_name, typ='series')
+
+    db_host = config_series.DB_HOST
+    db_name = config_series.DB_NAME
+    db_query = config_series.DB_QUERY
+
+    return docs
