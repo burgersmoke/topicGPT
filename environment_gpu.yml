@@ -8,6 +8,7 @@ dependencies:
   - sqlalchemy
   - pyodbc
   - sentence-transformers
+  - accelerate
   - anytree
   - openai
   - nb_conda_kernels

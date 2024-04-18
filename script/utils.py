@@ -95,13 +95,17 @@ def api_call(prompt, deployment_name, temperature, max_tokens, top_p):
         if LOCAL_MODEL is None:
             print(f'Attempting to load a local model given this path: {deployment_name}')
 
-            LOCAL_MODEL = AutoModelForCausalLM.from_pretrained(deployment_name)
+            # NOTE: device_map requires accelerate to be installed:
+            # conda install conda-forge::accelerate
+            LOCAL_MODEL = AutoModelForCausalLM.from_pretrained(deployment_name, device_map="auto")
             LOCAL_TOKENIZER = AutoTokenizer.from_pretrained(deployment_name)
 
-            model_device = 'cpu'
-            if torch.cuda.is_available():
-                model_device = 'cuda'
-                LOCAL_MODEL.to(model_device)
+            # NOTE: Not required when we use :
+            # device_map="auto"
+            #model_device = 'cpu'
+            #if torch.cuda.is_available():
+            #    model_device = 'cuda'
+            #    LOCAL_MODEL.to(model_device)
 
             print(f'type(local_model): {type(LOCAL_MODEL)}')
             print(f'type(local_tokenizer): {type(LOCAL_TOKENIZER)}')
@@ -120,10 +124,12 @@ def api_call(prompt, deployment_name, temperature, max_tokens, top_p):
 
             model_inputs = encodeds
 
-            device = 'cpu'
-            if torch.cuda.is_available():
-                device = 'cuda'
-                model_inputs = encodeds.to(device)
+            # NOTE: Not required when we use :
+            # device_map="auto"
+            #device = 'cpu'
+            #if torch.cuda.is_available():
+            #    device = 'cuda'
+            #    model_inputs = encodeds.to(device)
 
             generated_ids = LOCAL_MODEL.generate(model_inputs, max_new_tokens=max_tokens, do_sample=True)
             decoded = LOCAL_TOKENIZER.batch_decode(generated_ids)

@@ -6,6 +6,7 @@ import traceback
 from sentence_transformers import SentenceTransformer, util
 import argparse
 import os
+import time
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -218,6 +219,9 @@ def main():
     )
     args = parser.parse_args()
 
+    # start timing
+    start_time = time.time()
+
     # Model configuration ----
     deployment_name, max_tokens, temperature, top_p = (
         args.deployment_name,
@@ -277,6 +281,15 @@ def main():
         with open(f"data/output/generation_1_backup.txt", "w") as f:
             for line in responses:
                 print(line, file=f)
+
+    end_time = time.time()
+
+    elapsed_seconds = end_time - start_time
+    seconds_per_document = elapsed_seconds / len(docs)
+
+    print(f'Total elapsed seconds: {elapsed_seconds}')
+    print(f'Total documents: {len(docs)}')
+    print(f'Seconds per document: {seconds_per_document}')
 
 
 if __name__ == "__main__":
