@@ -319,16 +319,35 @@ class APIClient:
                                                     eos_token_id=terminators,
                                                     )
 
-                    print(f'type(custom_llm_output): {type(custom_llm_output)}')
-                    print(f'custom_llm_output: {custom_llm_output}')
+                    #print(f'type(custom_llm_output): {type(custom_llm_output)}')
+                    #print(f'custom_llm_output: {custom_llm_output}')
 
                     custom_llm_output_response = custom_llm_output[0][final_prompt.shape[-1]:]
 
                     custom_llm_output_text = self.tokenizer.decode(custom_llm_output_response)
 
-                    print(f'custom_llm_output_text: {custom_llm_output_text}')
+                    # now here some LLMs will not return the desired format, so let's clean it up...
+                    # they might look like this:
+                    # [Topic Level] 1. Forest Conservation:
+                    # but they need to look like this:
+                    # [1] Forest Conservation:
 
-                    return custom_llm_output_text
+                    lines = custom_llm_output_text.split('\n')
+                    updated_lines = []
+                    for line in lines:
+                        if line.startswith('[Topic Level] '):
+                            line = line.replace('[Topic Level] ', '[')
+                            # now let's keep the single digit, add a bracket and then the rest...
+                            line = line[:2] + '] ' + line[3:]
+
+                        updated_lines.append(line)
+
+                    post_processed_output_text = '\n'.join(updated_lines)
+
+                    #print(f'custom_llm_output_text: {custom_llm_output_text}')
+                    print(f'post_processed_output_text: {post_processed_output_text}')
+
+                    return post_processed_output_text
                 
                 elif self.api == "gemini":
                     genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
