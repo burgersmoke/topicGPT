@@ -457,15 +457,31 @@ class APIClient:
                 for message in prompt_formatted
             ]
 
-            custom_llm_output = self.llm.generate(final_prompts,
-                                                  # do_sample=True,
-                                                  temperature=temperature,
-                                                  top_p=top_p,
-                                                  max_new_tokens=max_tokens,
-                                                  eos_token_id=terminators,
-                                                  )
+            terminators = [
+                self.tokenizer.eos_token_id,
+                self.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+            ]
 
-            return [output.outputs[0].text for output in custom_llm_output]
+            # skip the batch idea here for now...
+            custom_llm_output_texts = []
+            for final_prompt in final_prompts:
+                custom_llm_output = self.llm.generate(final_prompt.to('cuda'),
+                                                      # do_sample=True,
+                                                      temperature=temperature,
+                                                      top_p=top_p,
+                                                      max_new_tokens=max_tokens,
+                                                      eos_token_id=terminators,
+                                                      )
+
+                custom_llm_output_response = custom_llm_output[0][final_prompt.shape[-1]:]
+
+                custom_llm_output_text = self.tokenizer.decode(custom_llm_output_response)
+
+                custom_llm_output_texts.append(custom_llm_output_text)
+
+
+
+            return custom_llm_output_texts
 
 
 
