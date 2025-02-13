@@ -226,7 +226,7 @@ def assign_topics(api, model, data, prompt_file, out_file, topic_file, verbose):
     topics_root = TopicTree().from_topic_list(topic_file, from_file=True)
 
     # Prompting ----
-    if api == "vllm":
+    if api == "vllm" or api == 'custom_llm':
         responses, prompted_docs = assignment_batch(
             api_client,
             topics_root,

@@ -69,6 +69,24 @@ class APIClient:
                 block_size = 32
             )
             self.tokenizer = self.llm.get_tokenizer()
+        elif api == "custom_llm":
+
+            print(f'Preparing to import and load with custom_llm')
+
+            from transformers import AutoTokenizer, AutoModelForCausalLM
+
+            self.llm =AutoModelForCausalLM.from_pretrained(
+                self.model,
+                torch_dtype="auto",
+                device_map="cuda",
+            )
+
+            print(f'Model loaded with custom_llm')
+
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model, use_fast = False)
+
+            print(f'Tokenizer loaded with custom_llm')
+
         elif api == "gemini": 
             genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
             self.model_obj = genai.GenerativeModel(self.model)
@@ -136,6 +154,7 @@ class APIClient:
         """
         Prompting API one by one with retries
 
+
         Parameters:
         - prompt: Prompt text
         - max_tokens: Maximum token count
@@ -148,11 +167,22 @@ class APIClient:
         Returns:
         - response: Response text
         """
+
+        print(f'iterative_prompt system_message: {system_message}')
+        print(f'iterative_prompt prompt: {prompt}')
+
         # Formatting prompt
+        #message = [
+        #    {"role": "system", "content": system_message},
+        #    {"role": "user", "content": prompt},
+        #]
+
         message = [
-            {"role": "system", "content": system_message},
+
             {"role": "user", "content": prompt},
-        ]
+            {"role": "assistant", "content": system_message},
+
+         ]
 
         for attempt in range(num_try):
             try:
@@ -261,6 +291,44 @@ class APIClient:
                     )
                     vllm_output = self.llm.generate([final_prompt], sampling_params)
                     return [output.outputs[0].text for output in vllm_output][0]
+
+                elif self.api == 'custom_llm':
+
+                    final_prompt = self.tokenizer.apply_chat_template(
+                        message,
+                        #tokenize=False,
+                        add_generation_prompt=True,
+                        return_tensors="pt"
+                    )
+
+                    print(f'type(final_prompt): {type(final_prompt)}')
+                    #print(f'final_prompt: {final_prompt}')
+
+                    final_prompt = final_prompt.to('cuda')
+
+                    terminators = [
+                        self.tokenizer.eos_token_id,
+                        self.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+                    ]
+
+                    custom_llm_output = self.llm.generate(final_prompt,
+                                                    #do_sample=True,
+                                                    temperature=temperature,
+                                                    top_p=top_p,
+                                                    max_new_tokens=max_tokens,
+                                                    eos_token_id=terminators,
+                                                    )
+
+                    print(f'type(custom_llm_output): {type(custom_llm_output)}')
+                    print(f'custom_llm_output: {custom_llm_output}')
+
+                    custom_llm_output_response = custom_llm_output[0][final_prompt.shape[-1]:]
+
+                    custom_llm_output_text = self.tokenizer.decode(custom_llm_output_response)
+
+                    print(f'custom_llm_output_text: {custom_llm_output_text}')
+
+                    return custom_llm_output_text
                 
                 elif self.api == "gemini":
                     genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -317,34 +385,69 @@ class APIClient:
         Returns:
         - responses: List of response texts
         """
-        if self.api != "vllm":
+        if self.api not in ("vllm", 'custom_llm'):
             raise ValueError("Batch prompting not supported for this API.")
 
-        sampling_params = SamplingParams(
-            temperature=temperature,
-            top_p=top_p,
-            max_tokens=max_tokens,
-            stop_token_ids=[
-                self.tokenizer.eos_token_id,
-                self.tokenizer.convert_tokens_to_ids("<|eot_id|>"),
-            ],
-        )
+        if self.api == 'vllm':
 
-        prompt_formatted = [
-            [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt},
-            ]
-            for prompt in prompts
-        ]
-        final_prompts = [
-            self.tokenizer.apply_chat_template(
-                message, tokenize=False, add_generation_prompt=True
+            sampling_params = SamplingParams(
+                temperature=temperature,
+                top_p=top_p,
+                max_tokens=max_tokens,
+                stop_token_ids=[
+                    self.tokenizer.eos_token_id,
+                    self.tokenizer.convert_tokens_to_ids("<|eot_id|>"),
+                ],
             )
-            for message in prompt_formatted
-        ]
-        outputs = self.llm.generate(final_prompts, sampling_params)
-        return [output.outputs[0].text for output in outputs]
+
+            prompt_formatted = [
+                [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": prompt},
+                ]
+                for prompt in prompts
+            ]
+            final_prompts = [
+                self.tokenizer.apply_chat_template(
+                    message, tokenize=False, add_generation_prompt=True
+                )
+                for message in prompt_formatted
+            ]
+            outputs = self.llm.generate(final_prompts, sampling_params)
+            return [output.outputs[0].text for output in outputs]
+        elif self.api == 'custom_llm':
+
+            print(f'batch_prompt prompts: {prompts}')
+            print(f'batch_prompt system_message: {system_message}')
+
+            prompt_formatted = [
+                [
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": system_message},
+                ]
+                for prompt in prompts
+            ]
+
+            final_prompts = [
+                self.tokenizer.apply_chat_template(
+                    message,
+                    #tokenize=False,
+                    add_generation_prompt=True,
+                    return_tensors="pt"
+                )
+                for message in prompt_formatted
+            ]
+
+            custom_llm_output = self.llm.generate(final_prompts,
+                                                  # do_sample=True,
+                                                  temperature=temperature,
+                                                  top_p=top_p,
+                                                  max_new_tokens=max_tokens,
+                                                  eos_token_id=terminators,
+                                                  )
+
+            return [output.outputs[0].text for output in custom_llm_output]
+
 
 
 class TopicTree:
