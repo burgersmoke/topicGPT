@@ -61,6 +61,10 @@ class APIClient:
             self.llm = LLM(
                 self.model,
                 download_dir=os.environ.get("HF_HOME", None),
+                device = 'cuda',
+                disable_async_output_proc = True,
+                # "auto" was not working here
+                worker_cls = "vllm.worker.worker.Worker"
             )
             self.tokenizer = self.llm.get_tokenizer()
         elif api == "gemini": 
