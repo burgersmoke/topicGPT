@@ -64,7 +64,9 @@ class APIClient:
                 device = 'cuda',
                 disable_async_output_proc = True,
                 # "auto" was not working here
-                worker_cls = "vllm.worker.worker.Worker"
+                worker_cls = "vllm.worker.worker.Worker",
+                # this was None previously
+                block_size = 32
             )
             self.tokenizer = self.llm.get_tokenizer()
         elif api == "gemini": 
