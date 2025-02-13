@@ -180,7 +180,7 @@ def assignment_batch(
         prompted_docs.append(doc)
 
     responses = api_client.batch_prompt(
-        prompts, max_tokens, temperature, top_p, verbose
+        prompts, max_tokens, temperature, top_p
     )
     return responses, prompted_docs
 

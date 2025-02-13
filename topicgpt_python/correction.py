@@ -171,7 +171,7 @@ def correct_batch(
         prompts.append(prompt)
 
     responses = api_client.batch_prompt(
-        prompts, max_tokens, temperature, top_p, verbose
+        prompts, max_tokens, temperature, top_p
     )
     for responses, i in zip(responses, reprompt_idx):
         df.at[i, "responses"] = responses
